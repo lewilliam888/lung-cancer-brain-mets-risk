@@ -19,7 +19,7 @@ No data is committed to this repository. See [Setup](#setup) to download it.
 
 ## Approach
 
-**Training cohort.** Metastatic NSCLC patients in MSK MetTropism (`IS_DIST_MET_MAPPED`), one tumor sample each. These patients routinely receive brain MRI at staging, which makes the CNS label (`DMETS_DX_CNS_BRAIN`) more reliable. Samples taken from a CNS site are dropped because they reveal the label. Follow-up time is included as a covariate.
+**Training cohort.** Metastatic NSCLC patients in MSK MetTropism (`IS_DIST_MET_MAPPED`), one tumor sample each. These patients routinely receive brain MRI at staging. Samples taken from a CNS site are dropped because they reveal the label. The MSK timeline files date each metastasis diagnosis, so the training outcome is also time to event: the clock starts at tumor sequencing, patients with CNS metastasis at or within 30 days of sequencing are excluded, and death is a competing event.
 
 **Test cohort.** Stage IV GENIE patients whose first brain imaging after diagnosis shows no CNS involvement. The event is the first imaging report showing CNS involvement, measured from diagnosis. Death is a competing event, and other patients are censored at last follow-up. Stage I to III patients form a secondary analysis.
 
@@ -50,14 +50,19 @@ lung-cancer-brain-mets-risk/
 ├── data/
 │   ├── raw/            # downloaded files, git-ignored
 │   └── processed/      # cleaned tables, git-ignored
-├── notebooks/          # exploration and figures
-├── src/                # data loading, features, models, evaluation
-├── results/            # metrics and plots
+├── notebooks/          # one notebook per part, with instructions
+├── src/                # config, loaders, features, outcomes, evaluation
+├── results/            # metrics, figures, frozen model
+├── requirements.txt
 ├── environment.yml
 └── README.md
 ```
 
 ## Setup
+
+**Google Colab.** Upload the project folder to Google Drive. Each notebook starts with a setup cell that mounts Drive, installs `requirements.txt` and points to the folder. Edit `PROJECT_ROOT` in that cell if the folder is not at `MyDrive/lung cancer project`.
+
+**Local.**
 
 ```bash
 git clone https://github.com/<your-username>/lung-cancer-brain-mets-risk.git
@@ -66,9 +71,9 @@ conda env create -f environment.yml
 conda activate brain-mets
 ```
 
-**MSK MetTropism.** Download the study from its [cBioPortal page](https://www.cbioportal.org/study/summary?id=msk_met_2021) and extract it to `data/raw/msk_met_2021/`.
+**MSK MetTropism.** Download the study from its [cBioPortal page](https://www.cbioportal.org/study/summary?id=msk_met_2021) and place `msk_met_2021.tar.gz` in `data/raw/`. Notebook 01 extracts it.
 
-**GENIE BPC NSCLC.** Create a [Synapse](https://www.synapse.org) account, request access to [syn27056697](https://www.synapse.org/Synapse:syn27056697) and accept the data use terms. Then create a personal access token and run:
+**GENIE BPC NSCLC.** Create a [Synapse](https://www.synapse.org) account, request access to [syn27056697](https://www.synapse.org/Synapse:syn27056697) and accept the data use terms. Then create a personal access token. In Colab, save it as a secret named `SYNAPSE_AUTH_TOKEN` and run notebook 04. Locally, run:
 
 ```bash
 export SYNAPSE_AUTH_TOKEN=<your-token>
@@ -78,7 +83,7 @@ python -c "import os, synapseclient, synapseutils; syn = synapseclient.login(aut
 ## Limitations
 
 - The CNS label combines brain parenchymal and leptomeningeal metastases, so the model cannot predict leptomeningeal spread on its own.
-- The training label records CNS metastasis at any time, while the test outcome is new CNS metastasis within 2 years. Recalibration in GENIE narrows this gap.
+- MSK metastasis dates come from diagnosis codes, while GENIE outcomes come from curated imaging reports. Recalibration in GENIE narrows this gap.
 - The test set only includes patients with documented baseline brain imaging, which limits its size.
 - MSK MetTropism does not include smoking history or stage at diagnosis.
 - Both cohorts come from US and Canadian academic centers and may not represent other populations.
